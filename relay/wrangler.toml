@@ -2,10 +2,19 @@ name = "teamtalk-relay"
 main = "worker.js"
 compatibility_date = "2026-09-01"
 
+# Co-op rooms (Durable Objects, available on the free plan)
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "Room"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
+
 [vars]
 ALLOWED_MODELS = "claude-opus-5-5"
 MAX_TOKENS = "16000"
-DAILY_LIMIT = "300"
+DAILY_LIMIT = "500"
 
 # Per-code daily limit. Create the namespace with
 #   npx wrangler kv namespace create USAGE

@@ -9,18 +9,30 @@ import (
 )
 
 var (
-	stdin = bufio.NewReader(os.Stdin)
-	llm   *LLM
-	ctx   = context.Background()
-	cfg   Config
+	llm *LLM
+	ctx = context.Background()
+	cfg Config
+
+	// inputCh carries stdin lines. A single reader goroutine feeds it so the
+	// co-op client can wait on keyboard input and network messages together.
+	inputCh = make(chan string)
 )
 
-func readLine() (string, bool) {
-	line, err := stdin.ReadString('\n')
-	if err != nil && line == "" {
-		return "", false
+func pumpStdin() {
+	r := bufio.NewReader(os.Stdin)
+	for {
+		line, err := r.ReadString('\n')
+		if err != nil && line == "" {
+			close(inputCh)
+			return
+		}
+		inputCh <- strings.TrimSpace(line)
 	}
-	return strings.TrimSpace(line), true
+}
+
+func readLine() (string, bool) {
+	line, ok := <-inputCh
+	return line, ok
 }
 
 func prompt(label string) (string, bool) {
@@ -54,19 +66,21 @@ func exit(code int) {
 
 func main() {
 	enableANSI()
+	go pumpStdin()
 	loadConfig()
 	model := envOr("TEAMTALK_MODEL", defaultModel)
 	llm = NewLLM(model, envOr("TEAMTALK_NPC_MODEL", model))
 
 	for {
 		clearScreen()
-		fmt.Println(cBold + "TeamTalk for Work" + cReset + cDim + "  v3.3.0" + cReset)
+		fmt.Println(cBold + "TeamTalk for Work" + cReset + cDim + "  v3.4.0" + cReset)
 		sysLine("%s", workStatus())
 		fmt.Println()
 		fmt.Printf("  1. 사내 추리      %s퇴근 전까지 동료들을 심문해 범인 찾기%s %s\n", cDim, cReset, whodunitStatus())
 		fmt.Printf("  2. 설득왕         %sAI 상대를 정해진 턴 안에 말로 설득하기%s %s\n", cDim, cReset, persuadeStatus())
 		fmt.Printf("  3. 메일함 생존기  %s업무 메일 10통에 답장하고 살아남기%s %s\n", cDim, cReset, mailStatus())
 		fmt.Printf("  4. 서버 던전      %sssh로 접속하는 레거시 서버 텍스트 RPG%s %s\n", cDim, cReset, dungeonStatus())
+		fmt.Printf("  5. 같이하기       %s최대 4명이 협력해서 사건 해결 (사내망)%s\n", cDim, cReset)
 		fmt.Println()
 		fmt.Printf("  %s0. 설정 (출퇴근 시간, 접속)    q. 종료%s\n\n", cDim, cReset)
 		choice, ok := prompt("> ")
@@ -75,13 +89,23 @@ func main() {
 		}
 		switch strings.ToLower(choice) {
 		case "1":
-			playWhodunit()
+			if ensureCredentials() {
+				playWhodunit()
+			}
 		case "2":
-			playPersuade()
+			if ensureCredentials() {
+				playPersuade()
+			}
 		case "3":
-			playMail()
+			if ensureCredentials() {
+				playMail()
+			}
 		case "4":
-			playDungeon()
+			if ensureCredentials() {
+				playDungeon()
+			}
+		case "5":
+			playCoop()
 		case "0":
 			settings()
 		case "q", "/q":
@@ -100,16 +124,7 @@ func envOr(k, def string) string {
 func loadConfig() {
 	readJSON("config.json", &cfg)
 	if cfg.APIKey == "" && relayEndpoint() == "" {
-		if k := os.Getenv("ANTHROPIC_API_KEY"); k != "" {
-			cfg.APIKey = k
-		} else {
-			fmt.Println("처음 실행하셨네요. Anthropic API 키가 필요합니다. (https://console.anthropic.com)")
-			cfg.APIKey = askAPIKey()
-		}
-	}
-	if usingRelay() && cfg.AccessCode == "" {
-		fmt.Println("처음 실행하셨네요. 받은 접속 코드를 입력해 주세요.")
-		cfg.AccessCode = askAccessCode()
+		cfg.APIKey = os.Getenv("ANTHROPIC_API_KEY")
 	}
 	_, okStart := parseHM(cfg.WorkStart)
 	_, okEnd := parseHM(cfg.WorkEnd)
@@ -118,6 +133,32 @@ func loadConfig() {
 		askWorkHours()
 	}
 	saveConfig()
+}
+
+// ensureCredentials asks for an access code or API key the first time a game
+// needs the API. Co-op guests never need one: the host makes every call.
+func ensureCredentials() bool {
+	switch {
+	case usingRelay() && cfg.AccessCode == "":
+		fmt.Println("\n받은 접속 코드를 입력해 주세요. (취소는 Enter)")
+		c, ok := prompt("접속 코드: ")
+		if !ok || c == "" {
+			return false
+		}
+		cfg.AccessCode = c
+	case !usingRelay() && cfg.APIKey == "":
+		fmt.Println("\nAnthropic API 키가 필요합니다. (https://console.anthropic.com, 취소는 Enter)")
+		k, ok := prompt("API 키 입력: ")
+		if !ok || !strings.HasPrefix(k, "sk-") {
+			return false
+		}
+		cfg.APIKey = k
+	default:
+		return true
+	}
+	saveConfig()
+	llm = NewLLM(llm.model, llm.npcModel)
+	return true
 }
 
 func saveConfig() {

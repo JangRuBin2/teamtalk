@@ -182,29 +182,39 @@ func checkEvents(g *Game) {
 	if g.Practice {
 		return
 	}
-	t := now()
-	span := g.Deadline.Sub(g.Started)
-	at := []time.Time{
-		g.Started.Add(span / 4),
-		g.Started.Add(span / 2),
-		g.Started.Add(span * 3 / 4),
-		g.Deadline.Add(-30 * time.Minute),
+	for _, text := range duePressure(g.Started, g.Deadline, g.Fired) {
+		fmt.Printf("%s[알림] #general%s ", cYellow, cReset)
+		printBubble(fmtClock(now()), cRed, g.Scenario.BossName, text)
 	}
+}
+
+// duePressure marks and returns the boss reminders that are due now. They
+// fire at 1/4, 1/2 and 3/4 of the case and 30 minutes before the deadline.
+func duePressure(started, deadline time.Time, fired []bool) []string {
+	t := now()
+	span := deadline.Sub(started)
+	at := []time.Time{
+		started.Add(span / 4),
+		started.Add(span / 2),
+		started.Add(span * 3 / 4),
+		deadline.Add(-30 * time.Minute),
+	}
+	var due []string
 	for i, e := range at {
-		if g.Fired[i] || t.Before(e) {
+		if fired[i] || t.Before(e) {
 			continue
 		}
-		g.Fired[i] = true
-		if t.Sub(e) > time.Hour || !e.After(g.Started) { // stale, or the case started too late for it
+		fired[i] = true
+		if t.Sub(e) > time.Hour || !e.After(started) { // stale, or the case started too late for it
 			continue
 		}
 		text := pressureTexts[i]
 		if strings.Contains(text, "%s") {
-			text = fmt.Sprintf(text, fmtDur(g.Deadline.Sub(t)))
+			text = fmt.Sprintf(text, fmtDur(deadline.Sub(t)))
 		}
-		fmt.Printf("%s[알림] #general%s ", cYellow, cReset)
-		printBubble(fmtClock(t), cRed, g.Scenario.BossName, text)
+		due = append(due, text)
 	}
+	return due
 }
 
 func findSuspect(g *Game, q string) int {

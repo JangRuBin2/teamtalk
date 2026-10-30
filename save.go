@@ -10,6 +10,7 @@ type Config struct {
 	APIKey     string `json:"api_key,omitempty"`     // personal key; overrides the relay
 	AccessCode string `json:"access_code,omitempty"` // relay access code
 	RelayURL   string `json:"relay_url,omitempty"`   // overrides the built-in relay
+	Nickname   string `json:"nickname,omitempty"`
 	WorkStart  string `json:"work_start"`
 	WorkEnd    string `json:"work_end"`
 }
