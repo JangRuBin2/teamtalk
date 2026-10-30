@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -79,15 +80,31 @@ func hostCoop() {
 	if !ok {
 		return
 	}
-	stop := spinner("방 만드는 중")
 	srv := newCoopServer()
-	code, closeRoom, err := hostRoom(srv)
-	stop()
-	if err != nil {
-		srv.close()
+	var code string
+	var closeRoom func()
+	for {
+		var err error
+		stop := spinner("방 만드는 중")
+		code, closeRoom, err = hostRoom(srv)
+		stop()
+		if err == nil {
+			break
+		}
 		fmt.Println(cRed + err.Error() + cReset)
-		waitEnter("Enter")
-		return
+		if !errors.Is(err, errBadAccessCode) {
+			srv.close()
+			waitEnter("Enter")
+			return
+		}
+		c, ok := prompt("접속 코드를 다시 입력하세요 (취소는 Enter): ")
+		if !ok || c == "" {
+			srv.close()
+			return
+		}
+		cfg.AccessCode = c
+		saveConfig()
+		llm = NewLLM(llm.model, llm.npcModel)
 	}
 	defer func() { closeRoom(); srv.close() }()
 	ours, theirs := net.Pipe()

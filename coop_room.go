@@ -31,6 +31,8 @@ type roomFrame struct {
 	Close bool            `json:"close,omitempty"`
 }
 
+var errBadAccessCode = errors.New("접속 코드가 올바르지 않습니다")
+
 func roomURL(path string) (string, error) {
 	u, err := url.Parse(relayEndpoint())
 	if err != nil || u.Host == "" {
@@ -58,7 +60,7 @@ func dialRoom(path string, header http.Header) (*websocket.Conn, error) {
 		if resp != nil {
 			switch resp.StatusCode {
 			case 401:
-				return nil, errors.New("접속 코드가 올바르지 않습니다")
+				return nil, errBadAccessCode
 			case 404:
 				return nil, errors.New("그런 방이 없습니다. 초대 코드를 확인하세요")
 			case 429:

@@ -236,15 +236,23 @@ func settings() {
 	for {
 		clearScreen()
 		fmt.Println(cBold + "설정" + cReset)
-		fmt.Printf("\n  1. 출퇴근 시간   %s ~ %s\n", cfg.WorkStart, cfg.WorkEnd)
+		mode := "내 API 키 (Anthropic에 직접 연결)"
 		if usingRelay() {
+			mode = "접속 코드 (중계 서버)"
+		}
+		sysLine("\n  AI 연결 방식: %s", mode)
+		fmt.Printf("\n  1. 출퇴근 시간   %s ~ %s\n", cfg.WorkStart, cfg.WorkEnd)
+		if relayEndpoint() != "" {
 			fmt.Printf("  2. 접속 코드     %s\n", maskKey(cfg.AccessCode))
-			fmt.Printf("  3. 내 API 키로 바꾸기\n")
-		} else {
-			fmt.Printf("  2. API 키        %s\n", maskKey(cfg.APIKey))
-			if relayEndpoint() != "" {
-				fmt.Printf("  3. 접속 코드 방식으로 바꾸기 (내 API 키 지우기)\n")
+		}
+		if cfg.APIKey != "" {
+			label := "  3. 내 API 키     %s  %s(지우면 접속 코드 방식으로 바뀝니다)%s\n"
+			if relayEndpoint() == "" {
+				label = "  3. 내 API 키     %s%s%s\n"
 			}
+			fmt.Printf(label, maskKey(cfg.APIKey), cDim, cReset)
+		} else {
+			fmt.Printf("  3. 내 API 키     (없음)  %s입력하면 접속 코드 대신 내 키를 씁니다%s\n", cDim, cReset)
 		}
 		fmt.Printf("\n  %s0. 돌아가기%s\n\n", cDim, cReset)
 		c, ok := prompt("> ")
@@ -258,19 +266,20 @@ func settings() {
 			sysLine("저장했습니다. 이미 진행 중인 사내 추리의 마감 시간은 그대로입니다.")
 			waitEnter("Enter")
 		case "2":
-			if usingRelay() {
-				cfg.AccessCode = askAccessCode()
+			if relayEndpoint() == "" {
+				continue
+			}
+			cfg.AccessCode = askAccessCode()
+		case "3":
+			if cfg.APIKey != "" && relayEndpoint() != "" {
+				if yes("내 API 키를 지울까요? [y/N] ", false) {
+					cfg.APIKey = ""
+					if cfg.AccessCode == "" {
+						cfg.AccessCode = askAccessCode()
+					}
+				}
 			} else {
 				cfg.APIKey = askAPIKey()
-			}
-		case "3":
-			if usingRelay() {
-				cfg.APIKey = askAPIKey()
-			} else if relayEndpoint() != "" {
-				cfg.APIKey = ""
-				if cfg.AccessCode == "" {
-					cfg.AccessCode = askAccessCode()
-				}
 			}
 		default:
 			return
