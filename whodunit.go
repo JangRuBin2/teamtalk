@@ -68,10 +68,26 @@ func newCase() *Game {
 		g.Practice = true
 		deadline = "오늘 안"
 	}
+	fmt.Println()
+	fmt.Println("  1. 준비된 사건으로 시작   " + cDim + "사건 파일 + AI 인물 설정, 30초 안팎" + cReset)
+	fmt.Println("  2. AI가 완전히 새로 만들기 " + cDim + "1~3분 정도 걸려요" + cReset)
+	choice, ok := prompt("> [1] ")
+	if !ok {
+		return nil
+	}
+	fresh := choice == "2"
 	for {
-		stop := spinner("사건 파일을 받는 중 (30초~1분 정도 걸려요)")
-		s, err := GenerateScenario(ctx, llm, fmtClock(start), deadline)
-		stop()
+		var s *Scenario
+		var err error
+		if fresh {
+			stop := spinner("AI가 새 사건을 만드는 중 (1~3분)")
+			s, err = GenerateScenario(ctx, llm, fmtClock(start), deadline)
+			stop()
+		} else {
+			stop := spinner("사건 파일을 받는 중")
+			s, err = BuildFromDraft(ctx, llm, deadline)
+			stop()
+		}
 		if err == nil {
 			g.Scenario = s
 			g.Chats = make([][]Turn, len(s.Suspects))

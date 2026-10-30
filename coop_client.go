@@ -302,7 +302,9 @@ func (c *coopClient) onNet(m Msg) bool {
 	case "welcome":
 		c.host = m.Host
 		if c.host {
-			c.async(func() { sysLine("방장입니다. 다 모이면 /start 로 시작하세요.") })
+			c.async(func() {
+				sysLine("방장입니다. 다 모이면 /start 로 시작하세요. (/start ai 는 AI가 사건을 새로 만듭니다, 1~3분)")
+			})
 		}
 	case "lobby":
 		c.players = m.Players
@@ -409,7 +411,7 @@ func (c *coopClient) printHelp() {
   /who           참가자 목록
   /log           현재 채널 전체 보기
   /b             보스키 (Enter로 복귀)
-  /start         (방장) 사건 시작
+  /start         (방장) 준비된 사건으로 시작 (/start ai 는 AI가 새로 만듦, 1~3분)
   /q             방 나가기 (방장이 나가면 방이 닫힙니다)`)
 }
 
@@ -455,7 +457,7 @@ func (c *coopClient) onInput(line string) bool {
 	case "/help", "/h", "/?":
 		c.printHelp()
 	case "/start":
-		c.send(Msg{T: "start"})
+		c.send(Msg{T: "start", Text: arg})
 	case "/t", "/team":
 		if c.info != nil {
 			c.switchTo(0)

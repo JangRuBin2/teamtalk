@@ -20,6 +20,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - run: go test ./...
       - run: ./build.sh
         env:
           RELAY_URL: ${{ vars.RELAY_URL || 'https://teamtalk-relay.wkdfnqls2465.workers.dev' }}

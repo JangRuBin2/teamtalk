@@ -73,14 +73,14 @@ func main() {
 
 	for {
 		clearScreen()
-		fmt.Println(cBold + "TeamTalk for Work" + cReset + cDim + "  v3.4.0" + cReset)
+		fmt.Println(cBold + "TeamTalk for Work" + cReset + cDim + "  v3.5.0" + cReset)
 		sysLine("%s", workStatus())
 		fmt.Println()
 		fmt.Printf("  1. 사내 추리      %s퇴근 전까지 동료들을 심문해 범인 찾기%s %s\n", cDim, cReset, whodunitStatus())
 		fmt.Printf("  2. 설득왕         %sAI 상대를 정해진 턴 안에 말로 설득하기%s %s\n", cDim, cReset, persuadeStatus())
 		fmt.Printf("  3. 메일함 생존기  %s업무 메일 10통에 답장하고 살아남기%s %s\n", cDim, cReset, mailStatus())
 		fmt.Printf("  4. 서버 던전      %sssh로 접속하는 레거시 서버 텍스트 RPG%s %s\n", cDim, cReset, dungeonStatus())
-		fmt.Printf("  5. 같이하기       %s최대 4명이 협력해서 사건 해결 (사내망)%s\n", cDim, cReset)
+		fmt.Printf("  5. 같이하기       %s최대 4명이 협력해서 사건 해결 (초대 코드)%s\n", cDim, cReset)
 		fmt.Println()
 		fmt.Printf("  %s0. 설정 (출퇴근 시간, 접속)    q. 종료%s\n\n", cDim, cReset)
 		choice, ok := prompt("> ")

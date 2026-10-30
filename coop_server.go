@@ -327,7 +327,7 @@ func clip(s string) string {
 func (s *coopServer) dispatch(p *coopPlayer, m Msg) {
 	switch m.T {
 	case "start":
-		s.start(p)
+		s.start(p, m.Text == "ai")
 	case "team":
 		if text := clip(m.Text); text != "" {
 			var o outbox
@@ -345,7 +345,7 @@ func (s *coopServer) dispatch(p *coopPlayer, m Msg) {
 	}
 }
 
-func (s *coopServer) start(p *coopPlayer) {
+func (s *coopServer) start(p *coopPlayer, fresh bool) {
 	var o outbox
 	s.mu.Lock()
 	defer func() { s.mu.Unlock(); o.flush() }()
@@ -357,11 +357,15 @@ func (s *coopServer) start(p *coopPlayer) {
 		return
 	}
 	s.state = "generating"
-	s.all(&o, sysMsg("사건 파일을 받는 중입니다... (30초~1분)"))
-	go s.generate()
+	if fresh {
+		s.all(&o, sysMsg("AI가 새 사건을 만드는 중입니다... (1~3분)"))
+	} else {
+		s.all(&o, sysMsg("사건 파일을 받는 중입니다... (30초 안팎)"))
+	}
+	go s.generate(fresh)
 }
 
-func (s *coopServer) generate() {
+func (s *coopServer) generate(fresh bool) {
 	start := now()
 	_, off := workDay(start)
 	practice := off.Sub(start) < 30*time.Minute
@@ -369,7 +373,13 @@ func (s *coopServer) generate() {
 	if practice {
 		deadline = "오늘 안"
 	}
-	sc, err := GenerateScenario(ctx, llm, fmtClock(start), deadline)
+	var sc *Scenario
+	var err error
+	if fresh {
+		sc, err = GenerateScenario(ctx, llm, fmtClock(start), deadline)
+	} else {
+		sc, err = BuildFromDraft(ctx, llm, deadline)
+	}
 
 	var o outbox
 	s.mu.Lock()
