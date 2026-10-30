@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	defaultModel = "claude-opus-5-5"
+	defaultModel    = "claude-opus-5-5"  // case generation, where quality matters most
+	defaultNPCModel = "claude-haiku-5-5" // in-game chat and grading
 )
 
 // relayURL is the built-in relay server, set at build time with
@@ -31,8 +32,8 @@ var errRefused = errors.New("refused")
 
 type LLM struct {
 	client   anthropic.Client
-	model    string // scenario generation & judging
-	npcModel string // NPC chat
+	model    string // scenario generation
+	npcModel string // NPC chat, game masters, grading
 }
 
 func NewLLM(model, npcModel string) *LLM {

@@ -130,7 +130,7 @@ https://console.anthropic.com 에서 이 서버 전용 키가 속한 워크스�
 
 **사용량 보기:** Cloudflare 대시보드 → Workers & Pages → teamtalk-relay에서 요청 수를 볼 수 있습니다. 비용은 Anthropic 콘솔의 Usage에서 확인합니다.
 
-**허용 모델 바꾸기:** `wrangler.toml`의 `ALLOWED_MODELS`를 고치고 `npx wrangler deploy`를 다시 실행합니다. 예를 들어 비용을 줄이려고 대화를 Haiku로 돌리려면 `ALLOWED_MODELS = "claude-opus-5-5,claude-haiku-5-5"`로 바꾸고, 게임은 `TEAMTALK_NPC_MODEL=claude-haiku-5-5`로 실행합니다.
+**허용 모델 바꾸기:** `wrangler.toml`의 `ALLOWED_MODELS`를 고치고 `npx wrangler deploy`를 다시 실행합니다. 게임은 사건 생성에 `claude-opus-5-5`, 대화에 `claude-haiku-5-5`를 쓰므로 기본값에 둘 다 들어 있습니다.
 
 **서버 코드를 고친 뒤:** `relay/` 폴더에서 `npx wrangler deploy`만 다시 하면 됩니다. 비밀값은 그대로 유지됩니다.
 

@@ -14,7 +14,7 @@ tag = "v1"
 new_sqlite_classes = ["Room"]
 
 [vars]
-ALLOWED_MODELS = "claude-opus-5-5"
+ALLOWED_MODELS = "claude-opus-5-5,claude-haiku-5-5"
 MAX_TOKENS = "16000"
 DAILY_LIMIT = "500"
 

@@ -69,7 +69,7 @@ func main() {
 	go pumpStdin()
 	loadConfig()
 	model := envOr("TEAMTALK_MODEL", defaultModel)
-	llm = NewLLM(model, envOr("TEAMTALK_NPC_MODEL", model))
+	llm = NewLLM(model, envOr("TEAMTALK_NPC_MODEL", defaultNPCModel))
 
 	for {
 		clearScreen()

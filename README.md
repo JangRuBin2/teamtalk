@@ -77,10 +77,15 @@ AI 호출은 방장 쪽 접속 코드로 나갑니다. 같이하기는 중계 �
 
 ## 모델 설정
 
-기본값은 `claude-opus-5-5`입니다. 게임 속 대화는 낮은 effort로 호출해서 응답이 빠릅니다. 대화용 모델만 바꾸려면 아래처럼 실행하세요. 중계 서버를 쓴다면 서버의 `ALLOWED_MODELS`에도 추가해야 합니다.
+| 용도 | 기본 모델 |
+|---|---|
+| 사건 생성 | `claude-opus-5-5` (한 판에 한 번, 품질이 가장 중요) |
+| 용의자 DM, 설득왕, 메일, 서버 던전, 추리 채점 | `claude-haiku-5-5` (짧은 대화라 빠르고 저렴) |
+
+환경변수로 바꿀 수 있습니다. `TEAMTALK_MODEL`은 사건 생성용, `TEAMTALK_NPC_MODEL`은 대화용입니다. 중계 서버를 쓴다면 서버의 `ALLOWED_MODELS`에도 그 모델이 있어야 합니다.
 
 ```bash
-TEAMTALK_NPC_MODEL=claude-haiku-5-5 ./teamtalk-linux
+TEAMTALK_NPC_MODEL=claude-opus-5-5 ./teamtalk-linux
 ```
 
 ## 빌드와 릴리즈

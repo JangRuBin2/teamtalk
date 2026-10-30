@@ -156,7 +156,7 @@ func JudgeReasoning(ctx context.Context, l *LLM, s *Scenario, reasoning string) 
 grade 기준: S = 결정적 모순(key_contradiction)이나 수법을 정확히 짚음, A = 동기나 핵심 증거 일부를 맞힘, B = 막연하지만 방향은 맞음, C = 사실상 찍음.
 feedback: %s가 플레이어에게 메신저로 보내는 말투로 1~2문장. 등급에 맞게 칭찬하거나 비꼬기.`, truth, reasoning, s.BossName)
 	msg, err := l.send(ctx, anthropic.BetaMessageNewParams{
-		Model:     anthropic.Model(l.model),
+		Model:     anthropic.Model(l.npcModel),
 		MaxTokens: 4000,
 		Messages: []anthropic.BetaMessageParam{
 			anthropic.NewBetaUserMessage(anthropic.NewBetaTextBlock(prompt)),

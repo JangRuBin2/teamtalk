@@ -153,7 +153,7 @@ export default {
     } catch {
       return apiError(400, "invalid_request_error", "invalid JSON body");
     }
-    if (!list(env.ALLOWED_MODELS || "claude-opus-5-5").includes(body.model)) {
+    if (!list(env.ALLOWED_MODELS || "claude-opus-5-5,claude-haiku-5-5").includes(body.model)) {
       return apiError(403, "permission_error", `model ${body.model} is not allowed`);
     }
     // The games never use tools; dropping them keeps the relay a plain chat endpoint.
