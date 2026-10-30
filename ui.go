@@ -28,8 +28,6 @@ func sysLine(format string, a ...any) {
 	fmt.Printf(cDim+format+cReset+"\n", a...)
 }
 
-func fmtClock(min int) string { return fmt.Sprintf("%02d:%02d", min/60, min%60) }
-
 // printBubble prints a multi-line message aligned under the speaker label.
 func printBubble(clock, color, who, text string) {
 	lines := strings.Split(strings.TrimSpace(text), "\n")
@@ -97,6 +95,13 @@ var fakeBuildLog = []string{
 	"> Task :api:bootJar",
 	"<===========--> 87% EXECUTING [1m 12s]",
 	"> :api:bootJar > Resolve dependencies of :api:runtimeClasspath",
+}
+
+// bar renders a 0-100 value as a 10-cell gauge.
+func bar(v int, color string) string {
+	v = max(0, min(100, v))
+	n := (v + 5) / 10
+	return fmt.Sprintf("%s%s%s%s %3d", color, strings.Repeat("█", n), cDim+strings.Repeat("░", 10-n), cReset, v)
 }
 
 // bossKey hides the game behind a fake build log until Enter is pressed.

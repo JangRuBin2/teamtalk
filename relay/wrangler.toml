@@ -1,0 +1,15 @@
+name = "teamtalk-relay"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+ALLOWED_MODELS = "claude-opus-5-5"
+MAX_TOKENS = "16000"
+DAILY_LIMIT = "300"
+
+# Per-code daily limit. Create the namespace with
+#   npx wrangler kv namespace create USAGE
+# and paste the id below, then uncomment.
+# [[kv_namespaces]]
+# binding = "USAGE"
+# id = "<namespace id>"

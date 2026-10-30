@@ -79,9 +79,9 @@ var themes = []string{
 	"인사평가 결과 파일이 전사 메일로 잘못 발송된 사건",
 }
 
-const scenarioPrompt = `사내 메신저 기반 추리 게임의 사건 시나리오를 만들어라. 플레이어는 이 회사 직원이며, 오늘 아침 9시 팀장에게 사건 조사를 맡았다. 오늘 오후 6시(퇴근 시간)까지 동료들에게 메신저로 질문하고 증거를 열람해서 범인을 찾아야 한다.
+const scenarioPrompt = `사내 메신저 기반 추리 게임의 사건 시나리오를 만들어라. 플레이어는 이 회사 직원이며, 오늘 {{START}}에 팀장에게 사건 조사를 맡았다. {{DEADLINE}}까지 동료들에게 메신저로 질문하고 증거를 열람해서 범인을 찾아야 한다.
 
-사건 주제: %s
+사건 주제: {{THEME}}
 
 요구사항:
 - 한국 회사 배경. 회사 이름(company)과 팀장 이름(boss_name, 예: "박정훈 팀장")을 정한다.
@@ -95,18 +95,21 @@ const scenarioPrompt = `사내 메신저 기반 추리 게임의 사건 시나�
 - timeline: 사건 전후 실제로 일어난 일을 시간순으로 6~10개 ("어제 19:40 - ..." 형식).
 - evidence: 플레이어가 열람할 수 있는 자료 4~5개. 출입 기록, 메일, CCTV 요약, 결제 내역, 서버 로그, 메신저 캡처 등. content는 실제 로그/문서처럼 여러 줄 텍스트로 시각과 함께 작성. 범인 이름을 직접 지목하면 안 되고, 증언과 교차 확인해야 의미가 드러나게. 레드 헤링 1개 포함.
 - key_contradiction: 범인의 거짓말이 들통나는 결정적 모순 (증거 X와 범인의 주장 Y가 충돌하는 지점). 공정하게 추리 가능해야 한다.
-- briefing: 팀장이 9시에 #general 채널에서 플레이어에게 보내는 메시지. 2~4문장, 사건 개요 + "6시 퇴근 전까지 범인 찾아와" 라는 취지.
+- briefing: 팀장이 #general 채널에서 플레이어에게 보내는 메시지. 2~4문장, 사건 개요 + "{{DEADLINE}}까지 범인 찾아와" 라는 취지.
 - 너무 무겁지 않게, 직장인이 웃을 수 있는 현실 공감 톤.`
 
-func GenerateScenario(ctx context.Context, l *LLM) (*Scenario, error) {
+// GenerateScenario builds a new case. start and deadline describe the real
+// play window, e.g. "10:42" and "오늘 18:00 퇴근 전".
+func GenerateScenario(ctx context.Context, l *LLM, start, deadline string) (*Scenario, error) {
 	theme := themes[rand.Intn(len(themes))]
+	userPrompt := strings.NewReplacer("{{START}}", start, "{{DEADLINE}}", deadline, "{{THEME}}", theme).Replace(scenarioPrompt)
 	var lastErr error
 	for attempt := 0; attempt < 2; attempt++ {
 		msg, err := l.send(ctx, anthropic.BetaMessageNewParams{
 			Model:     anthropic.Model(l.model),
 			MaxTokens: 16000,
 			Messages: []anthropic.BetaMessageParam{
-				anthropic.NewBetaUserMessage(anthropic.NewBetaTextBlock(fmt.Sprintf(scenarioPrompt, theme))),
+				anthropic.NewBetaUserMessage(anthropic.NewBetaTextBlock(userPrompt)),
 			},
 			OutputConfig: anthropic.BetaOutputConfigParam{
 				Effort: anthropic.BetaOutputConfigEffortMedium,

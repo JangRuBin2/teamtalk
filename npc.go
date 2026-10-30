@@ -9,20 +9,76 @@ import (
 	"github.com/anthropics/anthropic-sdk-go/v2"
 )
 
-// Turn is one exchange in a DM. Raw holds the full API response so thinking
-// blocks are replayed unchanged on later requests.
+// Turn is one exchange in a conversation. Raw holds the full API response so
+// thinking blocks are replayed unchanged on later requests.
 type Turn struct {
-	Time  string          `json:"time"`
+	Time  string          `json:"time,omitempty"`
 	User  string          `json:"user"`
 	Reply string          `json:"reply"`
 	Raw   json.RawMessage `json:"raw"`
 }
+
+func (t Turn) userText() string {
+	if t.Time == "" {
+		return t.User
+	}
+	return fmt.Sprintf("[%s] %s", t.Time, t.User)
+}
+
+// chatTurn sends next after history and returns the new turn. When schema is
+// non-nil the reply is constrained to that JSON shape.
+func chatTurn(ctx context.Context, model, system string, history []Turn, next Turn, effort anthropic.BetaOutputConfigEffort, schema any) (*Turn, error) {
+	msgs := make([]anthropic.BetaMessageParam, 0, len(history)*2+1)
+	for _, t := range history {
+		var prev anthropic.BetaMessage
+		if err := json.Unmarshal(t.Raw, &prev); err != nil {
+			return nil, err
+		}
+		msgs = append(msgs, anthropic.NewBetaUserMessage(anthropic.NewBetaTextBlock(t.userText())), prev.ToParam())
+	}
+	msgs = append(msgs, anthropic.NewBetaUserMessage(anthropic.NewBetaTextBlock(next.userText())))
+
+	out := anthropic.BetaOutputConfigParam{Effort: effort}
+	if schema != nil {
+		out.Format = anthropic.BetaJSONOutputFormatParam{Schema: schema}
+	}
+	msg, err := llm.send(ctx, anthropic.BetaMessageNewParams{
+		Model:        anthropic.Model(model),
+		MaxTokens:    8000,
+		System:       []anthropic.BetaTextBlockParam{{Text: system}},
+		Messages:     msgs,
+		CacheControl: anthropic.NewBetaCacheControlEphemeralParam(),
+		OutputConfig: out,
+	})
+	if err != nil {
+		return nil, err
+	}
+	next.Reply = textOf(msg)
+	next.Raw = json.RawMessage(msg.RawJSON())
+	return &next, nil
+}
+
+// chatJSON is chatTurn for structured replies, decoding the reply into T.
+func chatJSON[T any](model, system string, history []Turn, next Turn, effort anthropic.BetaOutputConfigEffort) (*Turn, *T, error) {
+	var v T
+	turn, err := chatTurn(ctx, model, system, history, next, effort, &v)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := json.Unmarshal([]byte(turn.Reply), &v); err != nil {
+		return nil, nil, fmt.Errorf("응답 해석 실패: %w", err)
+	}
+	return turn, &v, nil
+}
+
+func decodeJSON(s string, v any) error { return json.Unmarshal([]byte(s), v) }
 
 func npcSystemPrompt(s *Scenario, idx int) string {
 	p := s.Suspects[idx]
 	var b strings.Builder
 	fmt.Fprintf(&b, "너는 사내 메신저 추리 게임 속 직원 \"%s %s\"(%s)다. 회사는 \"%s\". 플레이어는 같은 회사 동료로, %s에게 사건 조사를 맡았고 지금 사내 메신저 DM으로 너에게 말을 걸고 있다.\n\n", p.Name, p.Title, p.Dept, s.Company, s.BossName)
 	fmt.Fprintf(&b, "[사건] %s\n%s\n\n", s.IncidentTitle, s.Briefing)
+	fmt.Fprintf(&b, "[근무 시간] 출근 %s, 퇴근 %s. 점심시간(대략 12~13시)이나 퇴근 시간 이후에 메시지가 오면 그 상황에 맞게 반응한다(밥 먹는 중, 퇴근길 등).\n\n", cfg.WorkStart, cfg.WorkEnd)
 	b.WriteString("[동료 목록]\n")
 	for i, o := range s.Suspects {
 		if i != idx {
@@ -68,34 +124,10 @@ func npcSystemPrompt(s *Scenario, idx int) string {
 }
 
 // AskNPC sends the player's message to a suspect and returns their reply.
-func AskNPC(ctx context.Context, l *LLM, s *Scenario, idx int, history []Turn, clock, text string) (*Turn, error) {
-	msgs := make([]anthropic.BetaMessageParam, 0, len(history)*2+1)
-	for _, t := range history {
-		var prev anthropic.BetaMessage
-		if err := json.Unmarshal(t.Raw, &prev); err != nil {
-			return nil, err
-		}
-		msgs = append(msgs,
-			anthropic.NewBetaUserMessage(anthropic.NewBetaTextBlock(fmt.Sprintf("[%s] %s", t.Time, t.User))),
-			prev.ToParam(),
-		)
+func AskNPC(s *Scenario, idx int, history []Turn, clock, text string) (*Turn, error) {
+	t, err := chatTurn(ctx, llm.npcModel, npcSystemPrompt(s, idx), history, Turn{Time: clock, User: text}, anthropic.BetaOutputConfigEffortLow, nil)
+	if err == nil && t.Reply == "" {
+		t.Reply = "..."
 	}
-	msgs = append(msgs, anthropic.NewBetaUserMessage(anthropic.NewBetaTextBlock(fmt.Sprintf("[%s] %s", clock, text))))
-
-	msg, err := l.send(ctx, anthropic.BetaMessageNewParams{
-		Model:        anthropic.Model(l.npcModel),
-		MaxTokens:    4000,
-		System:       []anthropic.BetaTextBlockParam{{Text: npcSystemPrompt(s, idx)}},
-		Messages:     msgs,
-		CacheControl: anthropic.NewBetaCacheControlEphemeralParam(),
-		OutputConfig: anthropic.BetaOutputConfigParam{Effort: anthropic.BetaOutputConfigEffortLow},
-	})
-	if err != nil {
-		return nil, err
-	}
-	reply := textOf(msg)
-	if reply == "" {
-		reply = "..."
-	}
-	return &Turn{Time: clock, User: text, Reply: reply, Raw: json.RawMessage(msg.RawJSON())}, nil
+	return t, err
 }

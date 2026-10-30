@@ -16,6 +16,16 @@ const (
 	defaultModel = "claude-opus-5-5"
 )
 
+// relayURL is the built-in relay server, set at build time with
+// -ldflags "-X main.relayURL=https://...". The relay holds the API key, so
+// players only need an access code.
+var relayURL = ""
+
+func relayEndpoint() string { return or(cfg.RelayURL, relayURL) }
+
+// usingRelay reports whether requests go through the relay instead of a personal API key.
+func usingRelay() bool { return cfg.APIKey == "" && relayEndpoint() != "" }
+
 // errRefused is returned when the model declines to answer (stop_reason "refusal").
 var errRefused = errors.New("refused")
 
@@ -25,12 +35,16 @@ type LLM struct {
 	npcModel string // NPC chat
 }
 
-func NewLLM(apiKey, model, npcModel string) *LLM {
-	return &LLM{
-		client:   anthropic.NewClient(option.WithAPIKey(apiKey)),
-		model:    model,
-		npcModel: npcModel,
+func NewLLM(model, npcModel string) *LLM {
+	opts := []option.RequestOption{option.WithAPIKey(cfg.APIKey)}
+	if usingRelay() {
+		opts = []option.RequestOption{
+			option.WithBaseURL(relayEndpoint()),
+			option.WithAPIKey("relay"), // replaced by the relay
+			option.WithHeader("x-teamtalk-token", cfg.AccessCode),
+		}
 	}
+	return &LLM{client: anthropic.NewClient(opts...), model: model, npcModel: npcModel}
 }
 
 // supportsDefaultFallback reports whether the server-side "default" refusal
@@ -80,10 +94,16 @@ func friendlyError(err error) string {
 	if errors.As(err, &apierr) {
 		switch apierr.StatusCode {
 		case 401:
-			return "API 키가 올바르지 않습니다. /key 로 다시 설정하세요."
+			if usingRelay() {
+				return "접속 코드가 올바르지 않습니다. 메뉴의 설정(0)에서 다시 입력하세요."
+			}
+			return "API 키가 올바르지 않습니다. 메뉴의 설정(0)에서 다시 입력하세요."
 		case 403:
-			return "이 API 키로는 해당 모델을 사용할 수 없습니다."
+			return "이 모델은 사용할 수 없습니다."
 		case 429:
+			if usingRelay() {
+				return "오늘 사용량을 다 썼거나 요청이 너무 많습니다. 내일 다시 해주세요."
+			}
 			return "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."
 		case 529, 500, 502, 503:
 			return "서버가 혼잡합니다. 잠시 후 다시 시도해 주세요."

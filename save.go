@@ -7,7 +7,11 @@ import (
 )
 
 type Config struct {
-	APIKey string `json:"api_key"`
+	APIKey     string `json:"api_key,omitempty"`     // personal key; overrides the relay
+	AccessCode string `json:"access_code,omitempty"` // relay access code
+	RelayURL   string `json:"relay_url,omitempty"`   // overrides the built-in relay
+	WorkStart  string `json:"work_start"`
+	WorkEnd    string `json:"work_end"`
 }
 
 func dataDir() string {
@@ -37,4 +41,4 @@ func writeJSON(name string, v any) error {
 	return os.WriteFile(filepath.Join(dataDir(), name), b, 0o600)
 }
 
-func removeSave() { os.Remove(filepath.Join(dataDir(), "save.json")) }
+func removeFile(name string) { os.Remove(filepath.Join(dataDir(), name)) }
