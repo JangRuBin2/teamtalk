@@ -2,6 +2,7 @@ name = "teamtalk-relay"
 main = "worker.js"
 compatibility_date = "2026-09-01"
 workers_dev = true # serve at https://teamtalk-relay.<subdomain>.workers.dev
+preview_urls = false
 
 # Co-op rooms (Durable Objects, available on the free plan)
 [[durable_objects.bindings]]

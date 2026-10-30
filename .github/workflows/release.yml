@@ -22,7 +22,7 @@ jobs:
           go-version-file: go.mod
       - run: ./build.sh
         env:
-          RELAY_URL: ${{ vars.RELAY_URL }}
+          RELAY_URL: ${{ vars.RELAY_URL || 'https://teamtalk-relay.wkdfnqls2465.workers.dev' }}
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
